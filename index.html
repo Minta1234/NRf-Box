@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>nRF-BOX V2 · Web Flasher</title>
+  <icon rel="shortcut icon" href="/icon.png" type="image/x-icon">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
@@ -441,7 +442,7 @@
   </main>
 
   <footer>
-    nRF-BOX V2 · by minta1234 &nbsp;·&nbsp; <a href="https://github.com">GitHub</a>
+    nRF-BOX V2 · by minta1234 &nbsp;·&nbsp; <a href="https://github.com/Minta1234/NRf-Box">GitHub</a>
   </footer>
 
   <!-- esptool-js from CDN -->
@@ -453,6 +454,9 @@
     let port = null;
 
     const files = { boot: null, part: null, app: null };
+
+    // ── Raw GitHub base URL ───────────────────────────────────────────────────────
+    const RAW = 'https://raw.githubusercontent.com/Minta1234/NRf-Box/main/NrfBox/';
 
     // ── File fetching ─────────────────────────────────────────────────────────────
     async function fetchFile(url, key, slotId, nameId, sizeId, dotId) {
@@ -476,11 +480,11 @@
     }
 
     async function preloadFirmware() {
-      log('Fetching firmware from server...', 'accent');
+      log('Fetching firmware from GitHub...', 'accent');
       await Promise.all([
-        fetchFile('https://github.com/Minta1234/NRf-Box/blob/8714daa7a01f6ee844cb638b57ccdde96e823718/NrfBox/nRFBox_V2.ino.bootloader.bin', 'boot', 'slot-boot', 'name-boot', 'size-boot', 'dot-boot'),
-        fetchFile('https://github.com/Minta1234/NRf-Box/blob/8714daa7a01f6ee844cb638b57ccdde96e823718/NrfBox/nRFBox_V2.ino.partitions.bin', 'part', 'slot-part', 'name-part', 'size-part', 'dot-part'),
-        fetchFile('https://github.com/Minta1234/NRf-Box/blob/8714daa7a01f6ee844cb638b57ccdde96e823718/NrfBox/nRFBox_V2.ino.bin', 'app', 'slot-app', 'name-app', 'size-app', 'dot-app')
+        fetchFile(RAW + 'nRFBox_V2.ino.bootloader.bin', 'boot', 'slot-boot', 'name-boot', 'size-boot', 'dot-boot'),
+        fetchFile(RAW + 'nRFBox_V2.ino.partitions.bin', 'part', 'slot-part', 'name-part', 'size-part', 'dot-part'),
+        fetchFile(RAW + 'nRFBox_V2.ino.bin',            'app',  'slot-app',  'name-app',  'size-app',  'dot-app')
       ]);
       checkReady();
     }
@@ -560,9 +564,9 @@
       log('── Starting flash sequence ──', 'accent');
 
       const flashData = [
-        { address: 0x1000, data: files.boot.data, name: files.boot.name },
-        { address: 0x8000, data: files.part.data, name: files.part.name },
-        { address: 0x10000, data: files.app.data, name: files.app.name },
+        { address: 0x1000,  data: files.boot.data, name: files.boot.name },
+        { address: 0x8000,  data: files.part.data, name: files.part.name },
+        { address: 0x10000, data: files.app.data,  name: files.app.name  },
       ];
 
       try {

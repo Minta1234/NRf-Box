@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nRF-BOX V2 · Web Flasher</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+    :root {
+      --bg: #080c10;
+      --surface: #0d1218;
+      --card: #111820;
+      --border: #1e2d3d;
+      --accent: #00d4ff;
+      --accent2: #7b4fff;
+      --success: #00e676;
+      --warn: #ffb300;
+      --error: #ff4444;
+      --text: #c8d8e8;
+      --muted: #445566;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px,
+          rgba(0, 212, 255, 0.015) 2px, rgba(0, 212, 255, 0.015) 4px);
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    header {
+      width: 100%;
+      max-width: 720px;
+      padding: 40px 24px 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-box {
+      width: 48px; height: 48px;
+      border: 1.5px solid var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 16px rgba(0, 212, 255, 0.3), inset 0 0 12px rgba(0, 212, 255, 0.05);
+      font-family: var(--mono); font-weight: 700; font-size: 11px;
+      color: var(--accent); letter-spacing: 1px; flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-family: var(--mono); font-size: 22px; font-weight: 700;
+      color: #fff; letter-spacing: -0.5px;
+    }
+    .header-text h1 span { color: var(--accent); }
+    .header-text p { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+    main {
+      width: 100%; max-width: 720px; padding: 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .card-title {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      color: var(--accent); text-transform: uppercase; letter-spacing: 2px;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .info-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .info-label { font-size: 10px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .info-val { font-size: 13px; font-weight: 600; font-family: var(--mono); color: #fff; }
+    .info-val.green { color: var(--success); }
+    .info-val.cyan { color: var(--accent); }
+
+    .file-slots { display: flex; flex-direction: column; gap: 8px; }
+    .file-slot {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; transition: border-color .2s;
+    }
+    .file-slot.loaded { border-color: var(--success); }
+    .file-slot.optional { opacity: .7; }
+    .slot-addr { font-family: var(--mono); font-size: 11px; color: var(--accent2); min-width: 70px; flex-shrink: 0; }
+    .slot-name { font-family: var(--mono); font-size: 12px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slot-size { font-family: var(--mono); font-size: 11px; color: var(--muted); flex-shrink: 0; }
+    .slot-status { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s, box-shadow .3s; }
+    .slot-status.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .slot-status.pending { background: var(--warn); box-shadow: 0 0 6px var(--warn); animation: blink 1s infinite; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .btn-file {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 10px; font-family: var(--mono); font-size: 11px; color: var(--text);
+      cursor: pointer; transition: .2s; white-space: nowrap;
+    }
+    .btn-file:hover { border-color: var(--accent); color: var(--accent); }
+    input[type=file] { display: none; }
+
+    .action-row { display: flex; gap: 10px; }
+    .btn {
+      flex: 1; padding: 14px; border-radius: 10px; border: none;
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: .2s;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; letter-spacing: .5px;
+    }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+    .btn-connect { background: transparent; border: 1.5px solid var(--accent); color: var(--accent); }
+    .btn-connect:hover:not(:disabled) { background: rgba(0, 212, 255, 0.08); box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+    .btn-connect.connected { border-color: var(--success); color: var(--success); }
+    .btn-flash { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #000; font-weight: 700; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.25); }
+    .btn-flash:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(0, 212, 255, 0.45); transform: translateY(-1px); }
+
+    .progress-wrap { display: none; flex-direction: column; gap: 8px; }
+    .progress-wrap.visible { display: flex; }
+    .progress-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .progress-track { height: 6px; background: var(--surface); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 99px; transition: width .3s ease; box-shadow: 0 0 8px var(--accent); }
+
+    .console {
+      background: #050810; border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; font-family: var(--mono); font-size: 11px; line-height: 1.7;
+      height: 160px; overflow-y: auto; color: #668899;
+    }
+    .console .log-info { color: #668899; }
+    .console .log-ok { color: var(--success); }
+    .console .log-warn { color: var(--warn); }
+    .console .log-error { color: var(--error); }
+    .console .log-accent { color: var(--accent); }
+
+    .status-bar {
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; font-family: var(--mono); font-size: 11px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .status-dot.on { background: var(--success); box-shadow: 0 0 6px var(--success); animation: blink 2s infinite; }
+    #status-text { color: var(--muted); flex: 1; }
+
+    .warn-banner {
+      display: flex; gap: 10px; align-items: flex-start;
+      background: rgba(255, 179, 0, 0.06); border: 1px solid rgba(255, 179, 0, 0.25);
+      border-radius: 8px; padding: 12px; font-size: 12px;
+      color: rgba(255, 179, 0, 0.85); line-height: 1.6;
+    }
+    .warn-banner .icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+
+    footer { padding: 24px; text-align: center; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* ── Pin Connection Guide ── */
+    .pin-section-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent2);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+    .pin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-bottom: 14px;
+    }
+    .pin-table th {
+      padding: 6px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      text-align: left;
+      font-weight: 600;
+    }
+    .pin-table th.radio { color: var(--accent); text-align: center; }
+    .pin-table td { padding: 5px 10px; border: 1px solid var(--border); color: var(--text); }
+    .pin-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    .pin-table td.shared { color: var(--accent2); text-align: center; }
+    .pin-table td.gpio  { color: var(--success); text-align: center; }
+    .pin-table td.vcc   { color: var(--warn); text-align: center; }
+    .pin-table td.gnd   { color: var(--muted); text-align: center; }
+
+    .pin-peripherals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pin-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .pin-box.full { grid-column: 1 / -1; }
+    .pin-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 0;
+    }
+    .pin-row .lbl { color: var(--muted); }
+    .pin-row .val-green { color: var(--success); }
+    .pin-row .val-warn  { color: var(--warn); }
+    .pin-row .val-muted { color: var(--muted); }
+
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .btn-pill {
+      text-align: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .btn-pill .lbl { color: var(--muted); margin-bottom: 4px; }
+    .btn-pill .val { color: var(--success); }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo-box">nRF</div>
+    <div class="header-text">
+      <h1>nRF-BOX <span>V2</span> · Web Flasher</h1>
+      <p>ESP32 · Web Serial API · esptool-js</p>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Device info -->
+    <div class="card">
+      <div class="card-title">Device Info</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Board</div>
+          <div class="info-val cyan">ESP32 Dev Module</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Flash Size</div>
+          <div class="info-val">4 MB</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Baud Rate</div>
+          <div class="info-val">921600</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Partition</div>
+          <div class="info-val green">Huge APP 3MB</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firmware files -->
+    <div class="card">
+      <div class="card-title">Firmware Files</div>
+      <div class="file-slots">
+
+        <div class="file-slot" id="slot-boot">
+          <div class="slot-addr">0x1000</div>
+          <div class="slot-name" id="name-boot">bootloader.bin — Downloading...</div>
+          <div class="slot-size" id="size-boot"></div>
+          <div class="slot-status pending" id="dot-boot"></div>
+        </div>
+
+        <div class="file-slot" id="slot-part">
+          <div class="slot-addr">0x8000</div>
+          <div class="slot-name" id="name-part">partitions.bin — Downloading...</div>
+          <div class="slot-size" id="size-part"></div>
+          <div class="slot-status pending" id="dot-part"></div>
+        </div>
+
+        <div class="file-slot" id="slot-app">
+          <div class="slot-addr">0x10000</div>
+          <div class="slot-name" id="name-app">nRFBox_V2.ino.bin — Downloading...</div>
+          <div class="slot-size" id="size-app"></div>
+          <div class="slot-status pending" id="dot-app"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Pin Connection Guide -->
+    <div class="card">
+      <div class="card-title">Pin Connection Guide</div>
+
+      <div class="pin-section-label">nRF24L01 × 3 · Shared SPI Bus</div>
+      <table class="pin-table">
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th class="radio">Radio A</th>
+            <th class="radio">Radio B</th>
+            <th class="radio">Radio C</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CE</td>
+            <td class="gpio">GPIO 5</td>
+            <td class="gpio">GPIO 16</td>
+            <td class="gpio">GPIO 15</td>
+          </tr>
+          <tr>
+            <td>CSN</td>
+            <td class="gpio">GPIO 17</td>
+            <td class="gpio">GPIO 4</td>
+            <td class="gpio">GPIO 2</td>
+          </tr>
+          <tr>
+            <td>MOSI</td>
+            <td colspan="3" class="shared">GPIO 23 (shared)</td>
+          </tr>
+          <tr>
+            <td>MISO</td>
+            <td colspan="3" class="shared">GPIO 19 (shared)</td>
+          </tr>
+          <tr>
+            <td>SCK</td>
+            <td colspan="3" class="shared">GPIO 18 (shared)</td>
+          </tr>
+          <tr>
+            <td>VCC</td>
+            <td colspan="3" class="vcc">3.3V</td>
+          </tr>
+          <tr>
+            <td>GND</td>
+            <td colspan="3" class="gnd">GND</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pin-peripherals">
+
+        <!-- OLED -->
+        <div class="pin-box">
+          <div class="pin-section-label">OLED · SH1106 I²C</div>
+          <div class="pin-row"><span class="lbl">SDA</span><span class="val-green">GPIO 21</span></div>
+          <div class="pin-row"><span class="lbl">SCL</span><span class="val-green">GPIO 22</span></div>
+          <div class="pin-row"><span class="lbl">VCC</span><span class="val-warn">3.3V</span></div>
+          <div class="pin-row"><span class="lbl">GND</span><span class="val-muted">GND</span></div>
+        </div>
+
+        <!-- NeoPixel -->
+        <div class="pin-box">
+          <div class="pin-section-label">NeoPixel LED</div>
+          <div class="pin-row"><span class="lbl">DATA</span><span class="val-green">GPIO 14</span></div>
+          <div class="pin-row"><span class="lbl">VCC</span><span class="val-warn">3.3V / 5V</span></div>
+          <div class="pin-row"><span class="lbl">GND</span><span class="val-muted">GND</span></div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="pin-box full">
+          <div class="pin-section-label">Buttons · INPUT_PULLUP — connect to GND when pressed</div>
+          <div class="btn-grid">
+            <div class="btn-pill"><div class="lbl">UP</div><div class="val">GPIO 26</div></div>
+            <div class="btn-pill"><div class="lbl">SELECT</div><div class="val">GPIO 32</div></div>
+            <div class="btn-pill"><div class="lbl">DOWN</div><div class="val">GPIO 33</div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button class="btn btn-connect" id="btn-connect" onclick="connectDevice()">
+        ⚡ Connect ESP32
+      </button>
+      <button class="btn btn-flash" id="btn-flash" onclick="startFlash()" disabled>
+        ▶ Flash Device
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-label">
+        <span id="prog-label">Flashing...</span>
+        <span id="prog-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" id="prog-bar"></div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Not connected · Connect ESP32 via USB</span>
+    </div>
+
+    <!-- Console -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 16px 8px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="card-title" style="margin:0;">Console</div>
+        <button onclick="clearConsole()"
+          style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--muted);cursor:pointer;font-family:var(--mono);">clear</button>
+      </div>
+      <div class="console" id="console"></div>
+    </div>
+
+    <!-- Warning -->
+    <div class="warn-banner">
+      <span class="icon">⚠</span>
+      <div>
+        <strong>Chrome / Edge only</strong> — Web Serial API Need Chromium-based browser<br>
+        press <strong>BOOT button</strong> on ESP32 while press Connect if not connect<br>
+        use USB Data not Data Only cable
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    nRF-BOX V2 · by minta1234 &nbsp;·&nbsp; <a href="https://github.com">GitHub</a>
+  </footer>
+
+  <!-- esptool-js from CDN -->
+  <script type="module">
+    import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.1/bundle.js';
+
+    let espLoader = null;
+    let transport = null;
+    let port = null;
+
+    const files = { boot: null, part: null, app: null };
+
+    // ── File fetching ─────────────────────────────────────────────────────────────
+    async function fetchFile(url, key, slotId, nameId, sizeId, dotId) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        const name = url.split('/').pop();
+
+        files[key] = { data: buf, name: name };
+        document.getElementById(nameId).textContent = name;
+        document.getElementById(sizeId).textContent = formatSize(buf.byteLength);
+        document.getElementById(dotId).className = 'slot-status ok';
+        document.getElementById(slotId).classList.add('loaded');
+        log(`Loaded: ${name} (${formatSize(buf.byteLength)})`, 'ok');
+      } catch (err) {
+        log(`Failed to load ${url}: ${err.message}`, 'error');
+        document.getElementById(dotId).className = 'slot-status error';
+        document.getElementById(nameId).textContent += ' (Failed)';
+      }
+    }
+
+    async function preloadFirmware() {
+      log('Fetching firmware from server...', 'accent');
+      await Promise.all([
+        fetchFile('/NrfBox/nRFBox_V2.ino.bootloader.bin', 'boot', 'slot-boot', 'name-boot', 'size-boot', 'dot-boot'),
+        fetchFile('/NrfBox/nRFBox_V2.ino.partitions.bin', 'part', 'slot-part', 'name-part', 'size-part', 'dot-part'),
+        fetchFile('/NrfBox/nRFBox_V2.ino.bin', 'app', 'slot-app', 'name-app', 'size-app', 'dot-app')
+      ]);
+      checkReady();
+    }
+
+    function checkReady() {
+      const ready = files.boot && files.part && files.app && espLoader;
+      document.getElementById('btn-flash').disabled = !ready;
+    }
+
+    // ── Connect ─────────────────────────────────────────────────────────────────
+    window.connectDevice = async () => {
+      if (!('serial' in navigator)) {
+        log('Web Serial API not supported. Use Chrome or Edge.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-connect');
+
+      if (port) {
+        try {
+          await transport?.disconnect();
+          await port.close();
+        } catch (e) { }
+        port = null; transport = null; espLoader = null;
+        btn.textContent = '⚡ Connect ESP32';
+        btn.classList.remove('connected');
+        setStatus(false, 'Disconnected');
+        document.getElementById('btn-flash').disabled = true;
+        log('Disconnected', 'warn');
+        return;
+      }
+
+      try {
+        log('Requesting serial port...', 'accent');
+        port = await navigator.serial.requestPort();
+        transport = new Transport(port, true);
+
+        const loader = new ESPLoader({
+          transport,
+          baudrate: 921600,
+          terminal: {
+            clean() { },
+            writeLine(data) { log(data, 'info'); },
+            write(data) { log(data, 'info'); }
+          }
+        });
+
+        log('Connecting to ESP32...', 'accent');
+        setStatus(true, 'Connecting...');
+
+        const chip = await loader.main();
+        espLoader = loader;
+
+        log(`Connected! Chip: ${chip}`, 'ok');
+        setStatus(true, `Connected · ${chip}`);
+        btn.textContent = '✕ Disconnect';
+        btn.classList.add('connected');
+        checkReady();
+
+      } catch (e) {
+        log(`Connection failed: ${e.message}`, 'error');
+        setStatus(false, 'Connection failed');
+        port = null; transport = null; espLoader = null;
+      }
+    };
+
+    // ── Flash ───────────────────────────────────────────────────────────────────
+    window.startFlash = async () => {
+      if (!espLoader || !files.boot || !files.part || !files.app) return;
+
+      const btn = document.getElementById('btn-flash');
+      const connectBtn = document.getElementById('btn-connect');
+      btn.disabled = true;
+      connectBtn.disabled = true;
+
+      showProgress(true);
+      log('── Starting flash sequence ──', 'accent');
+
+      const flashData = [
+        { address: 0x1000, data: files.boot.data, name: files.boot.name },
+        { address: 0x8000, data: files.part.data, name: files.part.name },
+        { address: 0x10000, data: files.app.data, name: files.app.name },
+      ];
+
+      try {
+        log('Erasing flash...', 'warn');
+        setProgress('Erasing...', 5);
+
+        const fileArray = flashData.map(f => ({
+          address: f.address,
+          data: arrayBufferToBinaryString(f.data)
+        }));
+
+        log(`Writing ${flashData.length} files...`, 'accent');
+
+        let totalBytes = flashData.reduce((s, f) => s + f.data.byteLength, 0);
+        let written = 0;
+
+        await espLoader.writeFlash({
+          fileArray,
+          flashSize: 'keep',
+          flashMode: 'keep',
+          flashFreq: 'keep',
+          eraseAll: false,
+          compress: true,
+          reportProgress(i, written_p, total_p) {
+            const pct = Math.round((written_p / total_p) * 100);
+            const name = flashData[i]?.name || `file ${i + 1}`;
+            setProgress(`Writing ${name}`, 10 + pct * 0.9);
+            if (written_p === total_p) {
+              log(`✓ ${name} flashed`, 'ok');
+            }
+          }
+        });
+
+        setProgress('Done!', 100);
+        log('── Flash complete! ──', 'ok');
+        log('Resetting ESP32...', 'accent');
+        await espLoader.hardReset();
+        log('nRF-BOX V2 is running ✓', 'ok');
+        setStatus(true, 'Flash complete · ESP32 restarted');
+
+      } catch (e) {
+        log(`Flash error: ${e.message}`, 'error');
+        setStatus(true, 'Flash failed — see console');
+      } finally {
+        btn.disabled = false;
+        connectBtn.disabled = false;
+      }
+    };
+
+    // ── Helpers ──────────────────────────────────────────────────────────────────
+    function arrayBufferToBinaryString(buf) {
+      const bytes = new Uint8Array(buf);
+      let str = '';
+      for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+      return str;
+    }
+
+    function formatSize(bytes) {
+      if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    function log(msg, type = 'info') {
+      const el = document.getElementById('console');
+      const line = document.createElement('div');
+      line.className = `log-${type}`;
+      const ts = new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      line.textContent = `[${ts}] ${msg}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    window.clearConsole = () => { document.getElementById('console').innerHTML = ''; };
+
+    function setStatus(on, msg) {
+      document.getElementById('status-dot').className = 'status-dot' + (on ? ' on' : '');
+      document.getElementById('status-text').textContent = msg;
+    }
+
+    function showProgress(show) {
+      document.getElementById('progress-wrap').classList.toggle('visible', show);
+    }
+
+    function setProgress(label, pct) {
+      document.getElementById('prog-label').textContent = label;
+      document.getElementById('prog-pct').textContent = Math.round(pct) + '%';
+      document.getElementById('prog-bar').style.width = pct + '%';
+    }
+
+    // ── Init log ─────────────────────────────────────────────────────────────────
+    log('nRF-BOX V2 Web Flasher ready', 'accent');
+    preloadFirmware();
+  </script>
+
+</body>
+
+</html>

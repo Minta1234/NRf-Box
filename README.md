@@ -8,7 +8,7 @@ A portable ESP32-based wireless toolkit with 3× nRF24L01 modules, featuring jam
 
 
 
-> Original by \\\[nRFBox](https://github.com/cifertech/nRFBox.git)
+> Original by \[nRFBox](https://github.com/cifertech/nRFBox.git)
 
 > by \[minta1234](https://github.com/minta1234)
 

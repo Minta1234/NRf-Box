@@ -482,7 +482,7 @@
     async function preloadFirmware() {
       log('Fetching firmware from GitHub...', 'accent');
       await Promise.all([
-        fetchFile(RAW + 'nRFBox_V2.ino.bootloader.bin', 'boot', 'slot-boot', 'name-boot', 'size-boot', 'dot-boot'),
+        fetchFile(RAW + 'bootloader.bin', 'boot', 'slot-boot', 'name-boot', 'size-boot', 'dot-boot'),
         fetchFile(RAW + 'nRFBox_V2.ino.partitions.bin', 'part', 'slot-part', 'name-part', 'size-part', 'dot-part'),
         fetchFile(RAW + 'nRFBox_V2.ino.bin',            'app',  'slot-app',  'name-app',  'size-app',  'dot-app')
       ]);
